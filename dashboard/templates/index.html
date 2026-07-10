@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Delta-Neutral Bot Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg:      #0d1117;
+      --surface: #161b22;
+      --border:  #30363d;
+      --text:    #e6edf3;
+      --muted:   #8b949e;
+      --green:   #3fb950;
+      --red:     #f85149;
+      --blue:    #58a6ff;
+      --yellow:  #d29922;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 1.5rem; }
+    h1 { font-size: 1.4rem; font-weight: 600; margin-bottom: 1.5rem; }
+    h1 span { color: var(--blue); }
+    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; }
+    .card .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: .35rem; }
+    .card .value { font-size: 1.6rem; font-weight: 700; }
+    .card .value.green  { color: var(--green); }
+    .card .value.yellow { color: var(--yellow); }
+    .card .value.blue   { color: var(--blue); }
+    .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+    @media(max-width:768px){ .charts { grid-template-columns: 1fr; } }
+    .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; }
+    .chart-card h2 { font-size: .85rem; color: var(--muted); margin-bottom: 1rem; }
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    th { text-align: left; padding: .5rem .75rem; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--border); }
+    td { padding: .45rem .75rem; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    .pos { color: var(--green); }
+    .neg { color: var(--red); }
+    .badge { display: inline-block; padding: .15rem .5rem; border-radius: 4px; font-size: .7rem; font-weight: 600; }
+    .badge.open   { background: rgba(88,166,255,.15); color: var(--blue); }
+    .badge.closed { background: rgba(63,185,80,.15);  color: var(--green); }
+    .badge.risk   { background: rgba(248,81,73,.15);  color: var(--red); }
+    .refresh { float: right; font-size: .75rem; color: var(--muted); }
+    #last-update { color: var(--muted); font-size: .75rem; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>⚡ <span>Delta-Neutral</span> Trading Bot</h1>
+  <div id="last-update">Loading…</div>
+
+  <!-- KPI Cards -->
+  <div class="grid-4" id="kpi-grid">
+    <div class="card"><div class="label">30d Net Profit</div><div class="value green" id="kpi-net">—</div></div>
+    <div class="card"><div class="label">Account Balance</div><div class="value blue" id="kpi-balance">—</div></div>
+    <div class="card"><div class="label">High-Water Mark</div><div class="value yellow" id="kpi-hwm">—</div></div>
+    <div class="card"><div class="label">Open Positions</div><div class="value" id="kpi-open">—</div></div>
+    <div class="card"><div class="label">30d Trades</div><div class="value" id="kpi-trades">—</div></div>
+    <div class="card"><div class="label">30d Gross</div><div class="value" id="kpi-gross">—</div></div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts">
+    <div class="chart-card">
+      <h2>Daily Net P&L (last 30 days)</h2>
+      <canvas id="pnl-chart" height="180"></canvas>
+    </div>
+    <div class="chart-card">
+      <h2>Account Balance</h2>
+      <canvas id="balance-chart" height="180"></canvas>
+    </div>
+  </div>
+
+  <!-- Daily Reports Table -->
+  <div class="card" style="margin-bottom:1rem;">
+    <h2 style="font-size:.85rem;color:var(--muted);margin-bottom:.75rem;">Daily Reports <span class="refresh" onclick="loadAll()">↻ Refresh</span></h2>
+    <table>
+      <thead><tr><th>Date</th><th>Trades</th><th>Gross</th><th>Fees</th><th>Net</th><th>Balance</th><th>Avg Spread</th></tr></thead>
+      <tbody id="reports-table"></tbody>
+    </table>
+  </div>
+
+  <!-- Risk Events -->
+  <div class="card" style="margin-bottom:1rem;">
+    <h2 style="font-size:.85rem;color:var(--muted);margin-bottom:.75rem;">Risk Events</h2>
+    <table>
+      <thead><tr><th>Time</th><th>Type</th><th>Description</th><th>Action</th></tr></thead>
+      <tbody id="risk-table"></tbody>
+    </table>
+  </div>
+
+  <!-- Withdrawal Log -->
+  <div class="card">
+    <h2 style="font-size:.85rem;color:var(--muted);margin-bottom:.75rem;">Withdrawal Log</h2>
+    <table>
+      <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Destination</th></tr></thead>
+      <tbody id="withdrawals-table"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const fmt  = n => n == null ? '—' : '$' + Number(n).toLocaleString('en-AU', {minimumFractionDigits:2, maximumFractionDigits:2});
+    const pct  = n => n == null ? '—' : (n * 100).toFixed(3) + '%';
+    const cls  = n => n >= 0 ? 'pos' : 'neg';
+
+    let pnlChart, balChart;
+
+    async function loadAll() {
+      const [summary, reports, risks, withdrawals] = await Promise.all([
+        fetch('/api/summary').then(r=>r.json()),
+        fetch('/api/reports').then(r=>r.json()),
+        fetch('/api/risk_events').then(r=>r.json()),
+        fetch('/api/withdrawals').then(r=>r.json()),
+      ]);
+      renderSummary(summary);
+      renderCharts(reports);
+      renderReports(reports);
+      renderRisk(risks);
+      renderWithdrawals(withdrawals);
+      document.getElementById('last-update').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+    }
+
+    function renderSummary(s) {
+      document.getElementById('kpi-net').textContent     = fmt(s.total_net_30d);
+      document.getElementById('kpi-balance').textContent = fmt(s.latest_balance);
+      document.getElementById('kpi-hwm').textContent     = fmt(s.hwm);
+      document.getElementById('kpi-open').textContent    = s.open_positions;
+      document.getElementById('kpi-trades').textContent  = s.total_trades_30d;
+      document.getElementById('kpi-gross').textContent   = fmt(s.total_gross_30d);
+    }
+
+    function renderCharts(reports) {
+      const sorted = [...reports].reverse();
+      const labels = sorted.map(r => r.report_date.slice(5));
+      const nets   = sorted.map(r => r.net_profit);
+      const bals   = sorted.map(r => r.account_balance);
+
+      if (pnlChart) pnlChart.destroy();
+      if (balChart) balChart.destroy();
+
+      const gridColor = 'rgba(48,54,61,0.6)';
+
+      pnlChart = new Chart(document.getElementById('pnl-chart'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            data: nets,
+            backgroundColor: nets.map(v => v >= 0 ? 'rgba(63,185,80,.7)' : 'rgba(248,81,73,.7)'),
+            borderRadius: 3,
+          }]
+        },
+        options: { plugins:{legend:{display:false}}, scales:{
+          x:{ticks:{color:'#8b949e'},grid:{color:gridColor}},
+          y:{ticks:{color:'#8b949e'},grid:{color:gridColor}}
+        }}
+      });
+
+      balChart = new Chart(document.getElementById('balance-chart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            data: bals,
+            borderColor: '#58a6ff',
+            backgroundColor: 'rgba(88,166,255,.08)',
+            tension: 0.3,
+            fill: true,
+            pointRadius: 2,
+          }]
+        },
+        options: { plugins:{legend:{display:false}}, scales:{
+          x:{ticks:{color:'#8b949e'},grid:{color:gridColor}},
+          y:{ticks:{color:'#8b949e'},grid:{color:gridColor}}
+        }}
+      });
+    }
+
+    function renderReports(reports) {
+      const tbody = document.getElementById('reports-table');
+      tbody.innerHTML = reports.map(r => `
+        <tr>
+          <td>${r.report_date}</td>
+          <td>${r.trades_count}</td>
+          <td class="${cls(r.gross_profit)}">${fmt(r.gross_profit)}</td>
+          <td class="neg">${fmt(-Math.abs(r.fees))}</td>
+          <td class="${cls(r.net_profit)}">${fmt(r.net_profit)}</td>
+          <td>${fmt(r.account_balance)}</td>
+          <td>${pct(r.avg_spread_pct)}</td>
+        </tr>`).join('');
+    }
+
+    function renderRisk(events) {
+      const tbody = document.getElementById('risk-table');
+      tbody.innerHTML = events.slice(0,20).map(e => `
+        <tr>
+          <td>${e.timestamp.slice(0,16)}</td>
+          <td><span class="badge risk">${e.event_type}</span></td>
+          <td>${e.description || '—'}</td>
+          <td>${e.action_taken || '—'}</td>
+        </tr>`).join('') || '<tr><td colspan="4" style="color:var(--muted)">No risk events</td></tr>';
+    }
+
+    function renderWithdrawals(wds) {
+      const tbody = document.getElementById('withdrawals-table');
+      tbody.innerHTML = wds.slice(0,20).map(w => `
+        <tr>
+          <td>${w.timestamp.slice(0,10)}</td>
+          <td><span class="badge open">${w.withdrawal_type}</span></td>
+          <td class="pos">${fmt(w.amount_usd)}</td>
+          <td>${w.destination || '—'}</td>
+        </tr>`).join('') || '<tr><td colspan="4" style="color:var(--muted)">No withdrawals yet</td></tr>';
+    }
+
+    loadAll();
+    setInterval(loadAll, 30000); // refresh every 30 seconds
+  </script>
+</body>
+</html>

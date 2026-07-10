@@ -1,0 +1,672 @@
+# ============================================================
+#  Delta-Neutral Bot — Configuration File
+#  All sensitive values (API keys) come from environment vars.
+#  Never commit API keys to this file.
+# ============================================================
+
+# ── Capital & Exchange ────────────────────────────────────────
+capital:
+  total_usdt: 400               # 2026-05-06: scaled down to $400 to validate edge
+                                # (bot overrides at startup with real wallet equity)
+  binance_allocation: 0.75      # 75% = $300 on Binance Futures
+  bybit_allocation: 0.25        # 25% = $100 on Bybit Perp
+                                # — bybit only needs $100 since it's the leg-B side
+                                #   that always fills. Binance needs cushion for retries.
+  stablecoin_reserve: 40        # 10% buffer of $400
+  free_margin_buffer: 0.15      # Keep 15% undeployed
+
+exchanges:
+  binance:
+    name: "binanceusdm"         # CCXT exchange ID for Binance Futures
+    api_key_env: "BINANCE_API_KEY"
+    api_secret_env: "BINANCE_API_SECRET"
+    testnet: false
+  bybit:
+    name: "bybit"               # CCXT exchange ID for Bybit
+    api_key_env: "BYBIT_API_KEY"
+    api_secret_env: "BYBIT_API_SECRET"
+    testnet: false
+  okx:
+    name: "myokx"               # CCXT exchange ID for OKX EEA (my.okx.com)
+    api_key_env: "OKX_API_KEY"
+    api_secret_env: "OKX_API_SECRET"
+    api_passphrase_env: "OKX_PASSPHRASE"   # OKX requires a passphrase
+    default_type: "swap"        # OKX perpetuals are "swap" not "future"
+    testnet: false
+  gate:
+    name: "gate"                # CCXT exchange ID for Gate.io Futures
+    api_key_env: "GATE_API_KEY"
+    api_secret_env: "GATE_API_SECRET"
+    default_type: "swap"        # Gate.io perpetuals are "swap"
+    testnet: false
+  bitget:
+    name: "bitget"              # CCXT exchange ID for Bitget Futures
+    api_key_env: "BITGET_API_KEY"
+    api_secret_env: "BITGET_API_SECRET"
+    default_type: "swap"        # Bitget perpetuals are "swap"
+    testnet: false
+  mexc:
+    name: "mexc"                # CCXT exchange ID for MEXC Futures (0% maker fee)
+    api_key_env: "MEXC_API_KEY"
+    api_secret_env: "MEXC_API_SECRET"
+    default_type: "swap"        # MEXC perpetuals are "swap"
+    testnet: false
+  binance_spot:
+    name: "binance"             # Binance SPOT — used for basis trading (spot vs perp)
+    api_key_env: "BINANCE_API_KEY"
+    api_secret_env: "BINANCE_API_SECRET"
+    default_type: "spot"
+    testnet: false
+
+# ── Leverage ──────────────────────────────────────────────────
+leverage:
+  default: 7                    # 7x — 0.11% to 0.20% spread
+  medium_threshold: 0.0020      # 0.20% → step up to 8x
+  medium_leverage: 8
+  maximum: 10
+  high_spread_threshold: 0.0030 # 0.30% → use 10x
+
+# ── Trading Pairs ─────────────────────────────────────────────
+# BTC replaced with DOGE — BTC/ETH spreads are too tight on Binance/Bybit.
+# DOGE, AVAX, BNB have 2–4x wider spreads on the same exchanges.
+pairs:
+  - leg_a_symbol: "ETH/USDT:USDT"
+    leg_b_symbol:  "ETH/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: true
+
+  - leg_a_symbol: "DOGE/USDT:USDT"
+    leg_b_symbol:  "DOGE/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: true
+
+  - leg_a_symbol: "SOL/USDT:USDT"
+    leg_b_symbol:  "SOL/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: true
+
+  - leg_a_symbol: "BNB/USDT:USDT"
+    leg_b_symbol:  "BNB/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: false     # Binance-native token — persistent spread locks capital, fees dominate
+
+  - leg_a_symbol: "AVAX/USDT:USDT"
+    leg_b_symbol:  "AVAX/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: true
+
+  - leg_a_symbol: "ARB/USDT:USDT"
+    leg_b_symbol:  "ARB/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: true               # scan result: +$8/mo, 95% WR
+
+  - leg_a_symbol: "OP/USDT:USDT"
+    leg_b_symbol:  "OP/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: true               # Re-enabled: adaptive threshold manages entry (starts raised from losses)
+
+  - leg_a_symbol: "NEAR/USDT:USDT"
+    leg_b_symbol:  "NEAR/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: true               # scan result: +$6/mo, 91% WR
+
+  - leg_a_symbol: "DOT/USDT:USDT"
+    leg_b_symbol:  "DOT/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: true               # scan result: +$4/mo, 93% WR
+
+  - leg_a_symbol: "ATOM/USDT:USDT"
+    leg_b_symbol:  "ATOM/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: true               # scan result: +$2/mo, 90% WR
+
+  - leg_a_symbol: "WIF/USDT:USDT"
+    leg_b_symbol:  "WIF/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: false              # 2026-05-06 DISABLED: 12% WR over 8 trades, spreads
+                               # cross through zero instead of converging.
+                               # Re-enable in 24h to test if regime has changed.
+
+  # ── Extra Binance<>Bybit pairs — lower liquidity = wider spreads ────────────
+  # LINK: oracle token, good volume, known for spread spikes during volatility
+  - leg_a_symbol: "LINK/USDT:USDT"
+    leg_b_symbol:  "LINK/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: true
+
+  # LTC: older chain, still good volume, wider spreads than ETH/SOL
+  - leg_a_symbol: "LTC/USDT:USDT"
+    leg_b_symbol:  "LTC/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: true
+
+  # INJ: Injective, newer chain, shallower books = wider spreads
+  - leg_a_symbol: "INJ/USDT:USDT"
+    leg_b_symbol:  "INJ/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: true
+
+  # FIL: Filecoin — DISABLED. 35 trades, -$118.05 net, 43% WR.
+  # Adaptive throttling was not enough — spread too noisy relative to fee cost.
+  - leg_a_symbol: "FIL/USDT:USDT"
+    leg_b_symbol:  "FIL/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: false
+
+  # ── Scanner-discovered pairs (2026-04-22, 30-day backtest) ──────────────────
+
+  # DYDX: +$54.4/mo, 71% WR, 2.0 t/day — top performer in scan
+  - leg_a_symbol: "DYDX/USDT:USDT"
+    leg_b_symbol:  "DYDX/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: true
+
+  # CRV: DISABLED 2026-04-23. 108 trades, -$36.32 net, 29% WR, avg spread 0.3417%.
+  # Fees ($216) exceed gross profit ($179) — spread does not compress reliably.
+  # Even on its best day (today, +$12.52) WR was only 30%. Pattern is structural.
+  - leg_a_symbol: "CRV/USDT:USDT"
+    leg_b_symbol:  "CRV/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: false
+
+  # SNX: DISABLED 2026-04-23. 86 trades, -$18.29 net, 30% WR, avg spread 0.3074%.
+  # Enters at 10x spread tier but 70% of trades go the wrong way — spread expands
+  # instead of compressing. Fees ($172) exceed gross ($153). No recovery path.
+  - leg_a_symbol: "SNX/USDT:USDT"
+    leg_b_symbol:  "SNX/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: false
+
+  # PORTAL: +$22.0/mo, 66% WR, 1.9 t/day
+  - leg_a_symbol: "PORTAL/USDT:USDT"
+    leg_b_symbol:  "PORTAL/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: true
+
+  # GALA: +$35.66 all-time, 45% WR, 77 trades. Re-enabled — adaptive throttle handles bad days.
+  - leg_a_symbol: "GALA/USDT:USDT"
+    leg_b_symbol:  "GALA/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: true
+
+  # SAGA: DISABLED. 102 trades, -$214.31 net, 16% WR. GROSS P&L IS NEGATIVE (-$10.36).
+  # Spread collapses immediately and reverses hard — structurally broken, same pattern as FIL.
+  # Adaptive ceiling (0.250%) insufficient — spread exceeds ceiling and still loses.
+  - leg_a_symbol: "SAGA/USDT:USDT"
+    leg_b_symbol:  "SAGA/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: false
+
+  # KSM: +$14.2/mo, 97% WR, 1.2 t/day — highest win rate in scan
+  - leg_a_symbol: "KSM/USDT:USDT"
+    leg_b_symbol:  "KSM/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: true
+
+  # 1INCH: DISABLED 2026-04-23. 25 trades, -$12.22 net, 48% WR, avg spread 0.1419%.
+  # Natural spread (0.14%) sits below the 0.18% floor — already blocked from new entries.
+  # Explicit disable prevents any momentary spike from triggering a bad trade.
+  - leg_a_symbol: "1INCH/USDT:USDT"
+    leg_b_symbol:  "1INCH/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: false
+
+  # STG: DISABLED. 8 trades, -$16.10 net, 12% WR. Gross P&L is -$0.10 (negative).
+  # Spread reverses immediately — not viable. Backtest result was misleading.
+  - leg_a_symbol: "STG/USDT:USDT"
+    leg_b_symbol:  "STG/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: false
+
+  # RUNE: +$6.6/mo, 85% WR, 0.7 t/day — THORChain, high win rate
+  - leg_a_symbol: "RUNE/USDT:USDT"
+    leg_b_symbol:  "RUNE/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: true
+
+  # COMP: +$6.1/mo, 71% WR, 1.0 t/day — Compound Finance
+  - leg_a_symbol: "COMP/USDT:USDT"
+    leg_b_symbol:  "COMP/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: true
+
+  # ORDI: +$5.9/mo, 77% WR, 0.7 t/day — Bitcoin ordinals
+  - leg_a_symbol: "ORDI/USDT:USDT"
+    leg_b_symbol:  "ORDI/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: true
+
+  # TIA: Celestia — Re-enabled with adaptive threshold.
+  # Had 13 losses → threshold will rehydrate to ceiling (0.25%) on restart.
+  - leg_a_symbol: "TIA/USDT:USDT"
+    leg_b_symbol:  "TIA/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bybit"
+    active: true
+
+  # ── OKX pairs — enable after adding OKX keys to .env ──────────────────────
+  # Scan results show OKX spreads are 2-4x wider than Binance<>Bybit
+  - leg_a_symbol: "NEAR/USDT:USDT"
+    leg_b_symbol:  "NEAR/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "okx"
+    active: false              # +$18/mo, 100% WR — best OKX pair
+
+  - leg_a_symbol: "ARB/USDT:USDT"
+    leg_b_symbol:  "ARB/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "okx"
+    active: false              # +$11/mo, 100% WR
+
+  - leg_a_symbol: "DOT/USDT:USDT"
+    leg_b_symbol:  "DOT/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "okx"
+    active: false              # +$11/mo, 100% WR
+
+  - leg_a_symbol: "ATOM/USDT:USDT"
+    leg_b_symbol:  "ATOM/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "okx"
+    active: false              # +$9/mo, 100% WR
+
+  - leg_a_symbol: "APT/USDT:USDT"
+    leg_b_symbol:  "APT/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "okx"
+    active: false              # +$7/mo, 91% WR
+
+  - leg_a_symbol: "APT/USDT:USDT"
+    leg_b_symbol:  "APT/USDT:USDT"
+    leg_a_exchange: "bybit"
+    leg_b_exchange: "okx"
+    active: false              # +$7/mo, 97% WR
+
+  - leg_a_symbol: "ARB/USDT:USDT"
+    leg_b_symbol:  "ARB/USDT:USDT"
+    leg_a_exchange: "bybit"
+    leg_b_exchange: "okx"
+    active: false              # +$5/mo, 96% WR
+
+  - leg_a_symbol: "NEAR/USDT:USDT"
+    leg_b_symbol:  "NEAR/USDT:USDT"
+    leg_a_exchange: "bybit"
+    leg_b_exchange: "okx"
+    active: false              # +$5/mo, 92% WR
+
+  - leg_a_symbol: "OP/USDT:USDT"
+    leg_b_symbol:  "OP/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "okx"
+    active: false              # +$5/mo, 100% WR
+
+  # ── Gate.io & Bitget pairs — enable after adding API keys to .env ──────────
+  # Top pairs from scan (90-day backtest, 1h candles)
+  - leg_a_symbol: "ARB/USDT:USDT"
+    leg_b_symbol:  "ARB/USDT:USDT"
+    leg_a_exchange: "gate"
+    leg_b_exchange: "bitget"
+    active: false              # +$41/mo, 100% WR — enable after 2-day test
+
+  - leg_a_symbol: "OP/USDT:USDT"
+    leg_b_symbol:  "OP/USDT:USDT"
+    leg_a_exchange: "gate"
+    leg_b_exchange: "bitget"
+    active: false              # +$32/mo, 100% WR — enable after 2-day test
+
+  - leg_a_symbol: "NEAR/USDT:USDT"
+    leg_b_symbol:  "NEAR/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "gate"
+    active: false              # +$29/mo, 100% WR — enable after 2-day test
+
+  - leg_a_symbol: "OP/USDT:USDT"
+    leg_b_symbol:  "OP/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bitget"
+    active: false              # +$27/mo, 100% WR — enable after 2-day test
+
+  - leg_a_symbol: "ARB/USDT:USDT"
+    leg_b_symbol:  "ARB/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bitget"
+    active: false              # +$26/mo, 100% WR — enable after 2-day test
+
+  - leg_a_symbol: "DOT/USDT:USDT"
+    leg_b_symbol:  "DOT/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bitget"
+    active: false              # +$25/mo, 100% WR — enable after 2-day test
+
+  - leg_a_symbol: "WIF/USDT:USDT"
+    leg_b_symbol:  "WIF/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "bitget"
+    active: false              # +$23/mo, 98% WR — enable after 2-day test
+
+  - leg_a_symbol: "DOT/USDT:USDT"
+    leg_b_symbol:  "DOT/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "gate"
+    active: false              # +$22/mo, 100% WR — enable after 2-day test
+
+  - leg_a_symbol: "ARB/USDT:USDT"
+    leg_b_symbol:  "ARB/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "gate"
+    active: false              # +$21/mo, 100% WR — enable after 2-day test
+
+  - leg_a_symbol: "ATOM/USDT:USDT"
+    leg_b_symbol:  "ATOM/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "gate"
+    active: false              # +$18/mo, 100% WR — enable after 2-day test
+
+  # ── MEXC pairs — enable after adding MEXC API keys to .env ────────────────
+  # MEXC has 0% maker fee → round-trip fee is only 0.04% (vs 0.08% on Bybit).
+  # min_spread_entry overridden to 0.10% — still profitable with halved fees.
+  - leg_a_symbol: "ETH/USDT:USDT"
+    leg_b_symbol:  "ETH/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "mexc"
+    active: false              # enable after MEXC scan + 2-day test
+    min_spread_entry: 0.0010   # 0.10% — profitable at 0.04% fees
+
+  - leg_a_symbol: "SOL/USDT:USDT"
+    leg_b_symbol:  "SOL/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "mexc"
+    active: false
+    min_spread_entry: 0.0010
+
+  - leg_a_symbol: "ARB/USDT:USDT"
+    leg_b_symbol:  "ARB/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "mexc"
+    active: false
+    min_spread_entry: 0.0010
+
+  - leg_a_symbol: "DOGE/USDT:USDT"
+    leg_b_symbol:  "DOGE/USDT:USDT"
+    leg_a_exchange: "binance"
+    leg_b_exchange: "mexc"
+    active: false
+    min_spread_entry: 0.0010
+
+# ── Basis Pairs (spot vs perp) ────────────────────────────────
+# Buy spot on Binance + short perp on Binance Futures.
+# Profit = basis convergence + funding payments. Zero directional risk.
+# Requires binance_spot exchange keys (same Binance API key works for both).
+basis_pairs:
+  - spot_symbol:   "ETH/USDT"
+    perp_symbol:   "ETH/USDT:USDT"
+    spot_exchange:  "binance_spot"
+    perp_exchange:  "binance"
+    active: false              # enable after paper testing basis strategy
+    min_basis_entry: 0.0010    # 0.10% premium → enter
+    min_basis_exit:  0.0002    # 0.02% → exit
+
+  - spot_symbol:   "SOL/USDT"
+    perp_symbol:   "SOL/USDT:USDT"
+    spot_exchange:  "binance_spot"
+    perp_exchange:  "binance"
+    active: false
+    min_basis_entry: 0.0010
+    min_basis_exit:  0.0002
+
+  - spot_symbol:   "BTC/USDT"
+    perp_symbol:   "BTC/USDT:USDT"
+    spot_exchange:  "binance_spot"
+    perp_exchange:  "binance"
+    active: false
+    min_basis_entry: 0.0010
+    min_basis_exit:  0.0002
+
+# ── Strategy Parameters ───────────────────────────────────────
+strategy:
+  # ── Entry / Exit ───────────────────────────────────────────────────────────
+  # Break-even math: entry - exit > round_trip_fee + real-world slippage
+  # Fee = 0.08% round-trip. Slippage in live ~0.28-0.35% per trade.
+  # At 0.11% floor: avg gross $2.13 - $2.00 fee - $0.28 slip = -$0.15/trade (loses in live)
+  # At 0.18% floor: avg gross $3.40 - $2.00 fee - $0.30 slip = +$1.10/trade (profitable in live)
+  # Raised from 0.0011 → 0.0018 on 2026-04-23 to eliminate marginal 7x trades.
+  # Impact: ~50% fewer trades, ~65-70% of paper profit captured in live vs 50% before.
+  # 2026-05-06 paper data (50 trades) showed bucket economics:
+  #   0.30-0.40%: 75% WR, $1.80 avg — eaten by ~$5 live execution cost
+  #   0.40-0.50%: 86% WR, $5.26 avg — SWEET SPOT, profitable in live
+  #   0.50-0.70%: 53% WR, $1.67 avg — overshoot tail risk
+  #   >=0.70%   : 75% WR, $3.30 avg — decent
+  # Raising floor to 0.40% skips the unprofitable bucket. Market-order entry
+  # (below) eliminates orphan tail risk that paper doesn't model.
+  min_spread_entry: 0.0080      # 0.80% — at $349 capital, friction is ~0.40% of notional
+                                # so need entry >0.80% with capture_ratio 0.5 to net positive
+  min_spread_exit: 0.0001       # 0.01% — capture full compression
+  paper_min_spread_entry: 0.0030  # paper has no execution cost — keep wide collection
+  paper_min_spread_exit: 0.0001
+
+  # ── REALIZED-P&L EXIT (new 2026-05-07) ──────────────────────────────────
+  # Old logic compared raw exit_spread to a 0.01% threshold. Because
+  # exit_spread is structurally negative due to bid-ask offset, that fired
+  # immediately on every trade. New logic uses realized round-trip return
+  # (entry_spread + current_exit_spread) which correctly measures captured P&L.
+  profit_capture_ratio: 0.5     # exit when realized >= 50% of entry spread
+                                # e.g. entered at 0.50% → exit at +0.25% realized
+                                # 0.7 = greedier, 0.3 = less greedy (faster exits)
+  realized_stop_loss: -0.0040   # exit if realized round-trip drops below -0.40%
+                                # protects against runaway adverse moves
+  trailing_exit_buffer: 0.0010  # if max_realized was good but gave back this much, exit
+                                # 0.10% giveback triggers trailing exit
+
+  # Funding exit/entry window — only consider funding adverse if within
+  # this many minutes of next 8h settlement. Prevents the bot from opening
+  # then immediately closing trades when funding is irrelevant (next
+  # settlement is hours away, trade will close on profit/stop long before).
+  funding_exit_window_min: 30
+  order_fill_timeout_seconds: 8      # parallel single-shot timeout; if not filled in 8s, cancel
+  entry_aggressiveness_bps: 5        # cross spread by 5 bps each leg — guaranteed taker fill, single shot
+
+  # entry_order_type: "limit" (default) | "market"
+  # When the slow exchange consistently fails to fill limits in current regime
+  # (e.g. WIF binance leg never filling while bybit always does), switch to
+  # "market" to eliminate cancel-fill race orphans. Cost: ~0.05-0.10% extra
+  # taker fees vs limit-with-cross. Benefit: both legs fill or neither does.
+  entry_order_type: market
+
+  # Circuit breaker: pause a pair if it generates too many orphan/imbalance
+  # events in a short window. Prevents repeated bleeding when execution
+  # structure on a pair has degraded.
+  circuit_breaker:
+    max_orphans: 3      # disable pair after this many orphans...
+    window_min:  30     # ...within this many minutes
+    pause_min:   60     # disable for this many minutes
+
+  # ── Adaptive per-pair spread threshold ────────────────────────────────────
+  # Each pair self-tunes its entry threshold based on live P&L results.
+  # Losing trade  → threshold rises by step_up  (+0.10%) — needs wider spread to enter
+  # Winning trade → threshold falls by step_down (-0.05%) — earns its way back
+  # Ceiling (0.25%) acts as a soft-disable: pairs rarely have spreads that wide,
+  # so a pair that keeps losing effectively stops trading until market conditions improve.
+  # On bot restart, last `lookback` trades are replayed to restore each pair's threshold.
+  adaptive_spread:
+    enabled:   true
+    step_up:   0.0005    # +0.05% per losing trade  — floor→ceiling needs 3 consecutive losses
+    step_down: 0.0002    # -0.02% per profitable trade — ceiling→floor needs ~7 wins
+    floor:     0.0040    # 0.40% — match new entry threshold (sweet-spot bucket)
+    ceiling:   0.0060    # 0.60% — adaptive 20bp range for throttling losing pairs
+    decay_per_hour: 0.0006  # 0.06%/h — pair recovers from ceiling to floor in ~2.5 hours
+    lookback:  10        # trades to replay on restart (only clean notional-capped trades)
+
+  # ── Scan speed ─────────────────────────────────────────────────────────────
+  # 2026-05-07: dropped 10→3s. Exit lag was costing ~$1/trade — bot saw entry
+  # spread at t=0, didn't re-check until t=10s by which time spread had already
+  # overshot zero, eroding capture. 3s tick lets exit fire near convergence.
+  # Trade-off: 3.3x more REST calls. Mitigation below: max_simultaneous=1 keeps
+  # entry-eval narrow, and ws_cache (if enabled) eliminates most REST polls.
+  position_check_interval: 3         # seconds — much faster reaction to spread collapse
+  funding_window_minutes: 30
+  funding_window_fast_interval: 3    # seconds — extra fast near funding settlements
+
+  # ── Position limits ────────────────────────────────────────────────────────
+  # Cap = capital / ~$400 per trade margin (both legs combined).
+  # $400 → 1 concurrent | $951 → 2 | $1500 → 3 | $3000 → 6
+  # Set conservatively; bybit margin warnings (>75%) mean you're over-allocated.
+  max_simultaneous_positions: 1      # for $400 capital — raise as you scale up
+  max_hold_hours: 12
+
+  # ── Notional cap — CRITICAL ────────────────────────────────────────────────
+  # Without this cap, when only 1 position is open the formula gives:
+  # tradeable * 7 * 0.60 / 1 = way too large — fees eat everything.
+  # Cap ensures no single trade risks more than this notional.
+  # At $1k capital the formula naturally gives ~$800 (cap doesn't bind).
+  # Cap starts binding at ~$3k capital — raise it as you scale:
+  #   $1k–$3k  → $2,500 (formula binds before cap anyway)
+  #   $3k–$7k  → $2,500 (formula reaches cap here — keep it)
+  #   $7k–$15k → $5,000 (raise when profits justify larger per-trade size)
+  #   $15k+    → $10,000
+  max_notional_per_trade: 2500       # USD — hard cap per trade regardless of sizing formula
+
+  # ── Re-entry cooldown ──────────────────────────────────────────────────────
+  # After closing a position on a pair, wait this many seconds before re-entering.
+  # Prevents the bot from immediately re-entering at the same price (FIL bug: 4 trades
+  # at identical prices within 20 seconds).
+  reentry_cooldown_seconds: 120      # 2 minutes between close and next entry on same pair
+
+  # ── Exit refinements ───────────────────────────────────────────────────────
+  trailing_exit_buffer: 0.0002       # 0.02% bounce-back before exit
+
+  # ── Funding ────────────────────────────────────────────────────────────────
+  funding_harvest_min_rate: 0.0001
+  funding_harvest_entry_min_rate: 0.0003
+  funding_harvest_deploy_pct: 0.30
+  basis_size_pct: 0.20
+
+# ── Per-exchange maker fee rates ──────────────────────────────
+# Used to compute exact round-trip fee per trade and set correct entry threshold.
+# Round-trip = (fee_a + fee_b) * 2  (open both legs + close both legs)
+exchange_fees:
+  binance:      0.00020          # 0.020% maker (0.018% with BNB fee discount)
+  bybit:        0.00020          # 0.020% maker
+  gate:         0.00015          # 0.015% maker — slightly cheaper than Bybit
+  bitget:       0.00020          # 0.020% maker
+  mexc:         0.00000          # 0.000% maker — MEXC perpetuals are free for makers
+  okx:          0.00020          # 0.020% maker
+
+# ── Position Sizing (dynamic) ─────────────────────────────────
+position_sizing:
+  high_spread_threshold: 0.002       # >= 0.20% → deploy 100%
+  high_spread_deploy:    1.00        # 100% of available margin
+  medium_spread_min:     0.0008      # 0.08% → deploy 60%
+  medium_spread_deploy:  0.60        # 60%
+  low_spread_deploy:     0.00        # 0% — sit flat in USDT
+  post_drawdown_deploy:  0.40        # 40% for 72h after stop-loss trigger
+  post_drawdown_hours:   72
+  correlation_min:       0.85        # pause all trades below this
+  correlation_lookback:  60          # minutes for rolling correlation
+
+# ── Risk Management ───────────────────────────────────────────
+risk:
+  account_stop_loss_pct: 0.08        # 8% unrealised loss → close everything
+  high_water_mark_floor: 0.15        # 15% drop from peak → halt bot
+  max_margin_usage:      0.75        # never exceed 75% margin utilisation
+  margin_alert_pct:      0.70        # 70% → send alert
+  position_loss_alert:   0.05        # 5% unrealised loss on any position
+  max_daily_loss:        50          # USD — base daily loss floor (5% of $1k capital)
+                                    # SCALE WITH CAPITAL: $1k→$50 | $2.5k→$125 | $5k→$200 | $10k→$300
+  daily_loss_profit_step: 100       # every $100 in daily profit → unlock $25 more loss allowance
+  daily_loss_step_amount: 25        # USD added to limit per profit step
+  # Effective limit examples (at $1k capital):
+  #   profit $0   → max loss $50
+  #   profit $100 → max loss $75
+  #   profit $200 → max loss $100
+  #   profit $300 → max loss $125
+  atr_spike_threshold:   0.05        # 5% 24h ATR → halve position size
+  news_blackout_minutes: 120         # 2 hours around macro events
+
+# ── News Blackout Events ──────────────────────────────────────
+# List upcoming FOMC / CPI / major crypto regulatory dates in UTC ISO format.
+# Update this list monthly. Bot pauses news_blackout_minutes each side.
+news_blackout_events: []
+  # - "2026-05-07T18:00:00"   # FOMC May 2026
+  # - "2026-06-11T12:30:00"   # CPI June 2026
+
+# ── Profit Extraction ─────────────────────────────────────────
+profit_extraction:
+  weekly_withdrawal_pct:  0.35       # 35% of week net profit → cold wallet
+  weekly_day: "friday"
+  weekly_hour_awst: 18               # 18:00 AWST
+  monthly_tax_pct:        0.25       # 25% → AUD fiat for tax (ATO)
+  monthly_reinvest_pct:   0.40       # 40% → back into margin (compounds growth)
+  monthly_liquidity_pct:  0.35       # 35% → USDT spot buffer
+  cold_wallet_address_env: "COLD_WALLET_ADDRESS"
+
+# ── Monitoring & Alerts ───────────────────────────────────────
+alerts:
+  # Telegram (FREE — recommended)
+  # Setup: message @BotFather on Telegram → /newbot → copy token
+  # Get chat_id: https://api.telegram.org/bot{TOKEN}/getUpdates (send any msg to bot first)
+  telegram_token_env:   "TELEGRAM_BOT_TOKEN"   # env var name holding your bot token
+  telegram_chat_id_env: "TELEGRAM_CHAT_ID"      # env var name holding your numeric chat ID
+
+  # Twilio SMS (optional — paid)
+  twilio_sid_env:       "TWILIO_ACCOUNT_SID"
+  twilio_token_env:     "TWILIO_AUTH_TOKEN"
+  twilio_from_env:      "TWILIO_FROM_NUMBER"
+  alert_phone_env:      "ALERT_PHONE_NUMBER"
+
+  # SMTP email (optional)
+  alert_email_env:      "ALERT_EMAIL"
+  smtp_host_env:        "SMTP_HOST"
+  smtp_port_env:        "SMTP_PORT"
+  smtp_user_env:        "SMTP_USER"
+  smtp_pass_env:        "SMTP_PASS"
+
+  inactivity_alert_hours: 4          # alert if no trades for 4h during market hours
+
+# ── Reporting ─────────────────────────────────────────────────
+reporting:
+  monthly_target: 600                # USD — used for progress bar in Telegram reports
+
+# ── Dashboard ─────────────────────────────────────────────────
+dashboard:
+  enabled: true
+  host: "127.0.0.1"
+  port: 5000
+  debug: false
+
+# ── Database ──────────────────────────────────────────────────
+database:
+  path: "data/bot.db"
+
+# ── Logging ───────────────────────────────────────────────────
+logging:
+  level: "INFO"
+  log_dir: "logs"
+  max_bytes: 10485760     # 10 MB
+  backup_count: 7
