@@ -125,12 +125,12 @@ All strategy parameters are in `config.yaml`. Key values:
 
 ## Six Risk Defence Layers
 
-1. **Liquidation prevention** — 5x default leverage, 20% free margin buffer, 8% account stop-loss
-2. **Exchange counterparty risk** — Split 60/40 across Binance and Bybit; weekly withdrawals
-3. **Correlation detection** — Pauses all trades if 1h rolling correlation drops below 0.85
-4. **Dynamic position sizing** — Deploys 100% / 60% / 0% based on spread quality
-5. **Profit extraction** — 35% weekly withdrawal locked in cold wallet, never re-risked
-6. **Operator accountability** — Hard daily loss cap ($100), ATR spike filter, news blackout
+1. **Liquidation prevention** - 5x default leverage, 20% free margin buffer, 8% account stop-loss
+2. **Exchange counterparty risk** - Split 60/40 across Binance and Bybit; weekly withdrawals
+3. **Correlation detection** - Pauses all trades if 1h rolling correlation drops below 0.85
+4. **Dynamic position sizing** - Deploys 100% / 60% / 0% based on spread quality
+5. **Profit extraction** - 35% weekly withdrawal locked in cold wallet, never re-risked
+6. **Operator accountability** - Hard daily loss cap ($100), ATR spike filter, news blackout
 
 ---
 
@@ -143,7 +143,7 @@ Runs locally at `http://localhost:5000` while the bot is active. Shows:
 - Risk events log
 - Withdrawal history
 
-The dashboard is **read-only** and bound to `127.0.0.1` only — never expose it externally.
+The dashboard is **read-only** and bound to `127.0.0.1` only - never expose it externally.
 
 ---
 
